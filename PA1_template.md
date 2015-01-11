@@ -93,7 +93,41 @@ The **mean** total number of steps is `10.770`, the **median** total number of s
 
 ## What is the average daily activity pattern?
 
+Steps need to be summed up per day by interval:
 
+```r
+aggregate_interval <- aggregate(steps ~ interval, activity_data, sum)
+head(aggregate_interval)
+```
+
+```
+##   interval steps
+## 1        0    91
+## 2        5    18
+## 3       10     7
+## 4       15     8
+## 5       20     4
+## 6       25   111
+```
+
+The series plot suggests that the maximum value is around the 800th interval:
+
+```r
+plot(aggregate_interval$interval, aggregate_interval$steps, type="l", main="Average number of steps per day by interval", xlab="Intervals", ylab="Number of steps", col="cadetblue")
+```
+
+![](PA1_template_files/figure-html/unnamed-chunk-6-1.png) 
+
+
+```r
+aggregate_interval[which.max(aggregate_interval$steps),1] 
+```
+
+```
+## [1] 835
+```
+
+The 5 minute interval, on average across all the days in the dataset, that contains the maximum number of steps taken is `835`.
 
 ## Imputing missing values
 
