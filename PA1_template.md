@@ -71,7 +71,7 @@ head(aggregate_steps)
 ## 6 2012-10-07 11015
 ```
 
-The histogram shows that a daily step count between 10.000 and 15.000 steps was quite frequent:
+The histogram shows that a daily step count between 10,000 and 15,000 steps was quite frequent:
 
 ```r
 hist(aggregate_steps$steps, main = "Total steps by day", xlab = "Number of steps", col = "cadetblue")
@@ -81,15 +81,21 @@ hist(aggregate_steps$steps, main = "Total steps by day", xlab = "Number of steps
 
 
 ```r
-summary(aggregate_steps$steps)
+summary(aggregate_steps)
 ```
 
 ```
-##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
-##      41    8841   10760   10770   13290   21190
+##          date        steps      
+##  2012-10-02: 1   Min.   :   41  
+##  2012-10-03: 1   1st Qu.: 8841  
+##  2012-10-04: 1   Median :10765  
+##  2012-10-05: 1   Mean   :10766  
+##  2012-10-06: 1   3rd Qu.:13294  
+##  2012-10-07: 1   Max.   :21194  
+##  (Other)   :47
 ```
 
-The **mean** total number of steps is `10.770`, the **median** total number of steps is `10.760`. 
+The **mean** total number of steps is `10,766`, the **median** total number of steps is `10,765`. 
 
 ## What is the average daily activity pattern?
 
@@ -113,7 +119,12 @@ head(aggregate_interval)
 The series plot suggests that the maximum value is around the 800th interval:
 
 ```r
-plot(aggregate_interval$interval, aggregate_interval$steps, type="l", main="Average number of steps per day by interval", xlab="Intervals", ylab="Number of steps", col="cadetblue")
+library(ggplot2)
+ggplot(aggregate_interval, aes(x=interval, y=steps)) + 
+        geom_line(color = "cadetblue") +
+        xlab("Intervals") +
+        ylab("Number of steps") +
+        ggtitle("Average number of steps per day by interval") 
 ```
 
 ![](PA1_template_files/figure-html/unnamed-chunk-6-1.png) 
@@ -131,6 +142,127 @@ The 5 minute interval, on average across all the days in the dataset, that conta
 
 ## Imputing missing values
 
+There are a number of days/intervals where there are missing values (coded as `NA`). The presence of missing days may introduce bias into some calculations or summaries of the data.
 
+This calculates the total number of mising values in the dataset:
+
+```r
+for (Var in names(activity_data)) {
+        missing <- sum(is.na(activity_data[,Var]))
+        if (missing > 0) {
+                print(c(Var,missing))
+        }
+} 
+```
+
+```
+## [1] "steps" "2304"
+```
+
+The total number of missing values in the dataset is `2304`.
+
+Imputing missing values with mean for 5 minute interval:
+
+```r
+#Remove NAs and prepare the new dataframe:
+newData <- data.frame(activity_data$steps)
+newData[is.na(newData),] <- ceiling(tapply(X=activity_data$steps,INDEX=activity_data$interval,FUN=mean,na.rm=TRUE))
+activity_clean <- cbind(newData, activity_data[,2:3])
+colnames(activity_clean) <- c("steps", "date", "Interval")
+
+#Calculate the new number of steps per day. 
+new_steps_aggregate <- aggregate(steps ~ date, activity_clean, sum)
+head(new_steps_aggregate)
+```
+
+```
+##         date steps
+## 1 2012-10-01 10909
+## 2 2012-10-02   126
+## 3 2012-10-03 11352
+## 4 2012-10-04 12116
+## 5 2012-10-05 13294
+## 6 2012-10-06 15420
+```
+
+A new histogram based on the above new dataset looks as follows:
+
+```r
+hist(new_steps_aggregate$steps, main = "Total steps by day", xlab = "Number of steps", col = "lightsteelblue1")
+```
+
+![](PA1_template_files/figure-html/unnamed-chunk-10-1.png) 
+
+
+```r
+summary(new_steps_aggregate)
+```
+
+```
+##          date        steps      
+##  2012-10-01: 1   Min.   :   41  
+##  2012-10-02: 1   1st Qu.: 9819  
+##  2012-10-03: 1   Median :10909  
+##  2012-10-04: 1   Mean   :10785  
+##  2012-10-05: 1   3rd Qu.:12811  
+##  2012-10-06: 1   Max.   :21194  
+##  (Other)   :55
+```
+
+The new **mean** total number of steps is `10,785`, the **median** total number of steps is `10,909`. 
+
+It seems that adding the missing values to the original data has caused both the mean and median values to increase.
+
+- **mean:** 10766 to 10785
+- **median:** 10765 to 10909
 
 ## Are there differences in activity patterns between weekdays and weekends?
+
+This creates a new factor variable in the dataset that with two levels - "weekday" and "weekend": 
+
+```r
+#Assign the new factor variable:
+dateDayType <- data.frame(sapply(X = activity_clean$date, FUN = function(day) {
+    if (weekdays(as.Date(day)) %in% c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday")) {
+        day <- "weekday"
+    } else {
+        day <- "weekend"
+    }
+}))
+
+activity_clean_day <- cbind(activity_clean, dateDayType)
+
+colnames(activity_clean_day) <- c("steps", "date", "interval", "day")
+
+#Calculate the average number of steps per 5 minute interval:
+aggregate_days <- aggregate(steps ~ day + interval, activity_clean_day, mean)
+
+head(aggregate_days)
+```
+
+```
+##       day interval     steps
+## 1 weekend        0 1.7540984
+## 2 weekend        5 0.4262295
+## 3 weekend       10 0.2459016
+## 4 weekend       15 0.2622951
+## 5 weekend       20 0.1967213
+## 6 weekend       25 2.2131148
+```
+
+The panel plot shows the differences between weekdays and weekends:
+library("lattice")
+
+```r
+library(lattice)
+xyplot(
+    type="l",
+    data=aggregate_days,
+    steps ~ interval | day,
+    xlab="Interval",
+    ylab="Number of steps",
+    layout=c(1,2)
+)
+```
+
+![](PA1_template_files/figure-html/unnamed-chunk-13-1.png) 
