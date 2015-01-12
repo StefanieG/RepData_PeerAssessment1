@@ -164,13 +164,14 @@ The total number of missing values in the dataset is `2304`.
 Imputing missing values with mean for 5 minute interval:
 
 ```r
-#Remove NAs and prepare the new dataframe:
+## Remove NAs and prepare the new dataframe:
 newData <- data.frame(activity_data$steps)
-newData[is.na(newData),] <- ceiling(tapply(X=activity_data$steps,INDEX=activity_data$interval,FUN=mean,na.rm=TRUE))
-activity_clean <- cbind(newData, activity_data[,2:3])
-colnames(activity_clean) <- c("steps", "date", "Interval")
+newData[is.na(newData),] <- ceiling(tapply(X=activity_data$step, INDEX=activity_data$interval,FUN=mean,na.rm=TRUE))
 
-#Calculate the new number of steps per day. 
+activity_clean <- cbind(newData, activity_data[,2:3])
+colnames(activity_clean) <- c("steps", "date", "interval")
+
+## Calculate the new number of steps per day. 
 new_steps_aggregate <- aggregate(steps ~ date, activity_clean, sum)
 head(new_steps_aggregate)
 ```
@@ -221,48 +222,41 @@ It seems that adding the missing values to the original data has caused both the
 This creates a new factor variable in the dataset that with two levels - "weekday" and "weekend": 
 
 ```r
-#Assign the new factor variable:
+## Add a column with "weekday" and "weekend".
 dateDayType <- data.frame(sapply(X = activity_clean$date, FUN = function(day) {
-    if (weekdays(as.Date(day)) %in% c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday")) {
-        day <- "weekday"
-    } else {
-        day <- "weekend"
-    }
+        if (weekdays(as.Date(day)) %in% c("Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag")) {
+                                day <- "weekday" } 
+        else {
+            day <- "weekend" }
 }))
 
-activity_clean_day <- cbind(activity_clean, dateDayType)
+NewDataWithDayType <- cbind(activity_clean, dateDayType)
 
-colnames(activity_clean_day) <- c("steps", "date", "interval", "day")
+## Need to rename the last column in the file:
+names(NewDataWithDayType)[names(NewDataWithDayType)=="sapply.X...activity_clean.date..FUN...function.day..."] <- "day"
 
-#Calculate the average number of steps per 5 minute interval:
-aggregate_days <- aggregate(steps ~ day + interval, activity_clean_day, mean)
+## Calculate the aggregate number for intervals for weedays and weekends: 
+aggregateStepsDaytype <- aggregate(data=NewDataWithDayType, steps ~ interval + day,FUN=mean)
 
-head(aggregate_days)
+head(aggregateStepsDaytype)
 ```
 
 ```
-##       day interval     steps
-## 1 weekend        0 1.7540984
-## 2 weekend        5 0.4262295
-## 3 weekend       10 0.2459016
-## 4 weekend       15 0.2622951
-## 5 weekend       20 0.1967213
-## 6 weekend       25 2.2131148
+##   interval     day     steps
+## 1        0 weekday 2.2888889
+## 2        5 weekday 0.5333333
+## 3       10 weekday 0.2888889
+## 4       15 weekday 0.3111111
+## 5       20 weekday 0.2222222
+## 6       25 weekday 1.7111111
 ```
 
 The panel plot shows the differences between weekdays and weekends:
-library("lattice")
 
 ```r
 library(lattice)
-xyplot(
-    type="l",
-    data=aggregate_days,
-    steps ~ interval | day,
-    xlab="Interval",
-    ylab="Number of steps",
-    layout=c(1,2)
-)
+xyplot(steps ~ interval | day, aggregateStepsDaytype, type = "l", layout = c(1, 2), 
+    xlab = "Interval", ylab = "Number of steps")
 ```
 
 ![](PA1_template_files/figure-html/unnamed-chunk-13-1.png) 
